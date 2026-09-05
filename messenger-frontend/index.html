@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Pulse Messenger</title>
-  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+  <script src="https://pulse-messenger-6v3n.onrender.com/socket.io/socket.io.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -340,7 +340,7 @@
       }
 
       // Если библиотека на месте — подключаемся без проблем
-      socket = io("http://localhost:3000");
+      socket = io("https://pulse-messenger-6v3n.onrender.com");
       socket.on("connect", () => {
         socket.emit("register_socket", pulse_id);
       });
@@ -365,7 +365,7 @@
       const chatList = document.getElementById('chatListContainer');
       if (!chatList || !currentUser) return;
       try {
-        const response = await fetch(`http://localhost:3000/api/v1/messages/chats/${currentUser.pulse_id}`);
+        const response = await fetch(`https://pulse-messenger-6v3n.onrender.com/api/v1/messages/chats/${currentUser.pulse_id}`);
         const chats = await response.json();
         if (response.ok && chats.length > 0) {
           chatList.innerHTML = '';
@@ -414,7 +414,7 @@
       e.preventDefault();
       const username = usernameInput.value.trim();
       const password = passwordInput.value;
-      const url = authMode === 'login' ? 'http://localhost:3000/api/v1/auth/login' : 'http://localhost:3000/api/v1/auth/register';
+      const url = authMode === 'login' ? 'https://pulse-messenger-6v3n.onrender.com/api/v1/auth/login' : 'https://pulse-messenger-6v3n.onrender.com/api/v1/auth/register';
       try {
         const response = await fetch(url, {
           method: 'POST',
@@ -447,7 +447,7 @@
     async function saveProfile() {
       const bioValue = document.getElementById('myBioInput').value;
       try {
-        const response = await fetch('http://localhost:3000/api/v1/user/update', {
+        const response = await fetch('https://pulse-messenger-6v3n.onrender.com/api/v1/user/update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pulse_id: currentUser.pulse_id, username: currentUser.username, bio: bioValue })
@@ -462,7 +462,7 @@
 
     async function logout() {
       try {
-        await fetch('http://localhost:3000/api/v1/auth/logout', {
+        await fetch('https://pulse-messenger-6v3n.onrender.com/api/v1/auth/logout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pulse_id: currentUser.pulse_id })
@@ -476,7 +476,7 @@
       const partnerId = document.getElementById('searchPartnerId').value.trim();
       if (!partnerId) return;
       try {
-        const response = await fetch(`http://localhost:3000/api/v1/user/search/${partnerId}`);
+        const response = await fetch(`https://pulse-messenger-6v3n.onrender.com/api/v1/user/search/${partnerId}`);
         const partner = await response.json();
         if (response.ok) {
           activeChatPartner = partner;
@@ -507,7 +507,7 @@
       const container = document.getElementById('messagesContainer');
       container.innerHTML = '';
       try {
-        const response = await fetch(`http://localhost:3000/api/v1/messages/history/${currentUser.pulse_id}/${activeChatPartner.public_id}`);
+        const response = await fetch(`https://pulse-messenger-6v3n.onrender.com/api/v1/messages/history/${currentUser.pulse_id}/${activeChatPartner.public_id}`);
         const history = await response.json();
         if (response.ok) {
           history.forEach(msg => {
@@ -529,7 +529,7 @@
       const text = msgInput.value.trim();
       if (!text || !activeChatPartner) return;
       try {
-        const response = await fetch('http://localhost:3000/api/v1/messages/send', {
+        const response = await fetch('https://pulse-messenger-6v3n.onrender.com/api/v1/messages/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
