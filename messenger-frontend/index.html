@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Pulse Messenger</title>
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0b14; --panel: #131323; --panel2: #1b1b30; --card: #202039;
+      --text: #fff; --muted: #9999b4; --accent: #7568ff; --accent2: #b39cff;
+      --border: rgba(255, 255, 255, .08); --danger: #ff5d6c; --ok: #35d07f;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .35);
+    }
+    body.light {
+      --bg: #f3f3f8; --panel: #fff; --panel2: #f0f0f7; --card: #f7f7fb;
+      --text: #171727; --muted: #73738a; --border: rgba(0, 0, 0, .08);
+      --shadow: 0 24px 80px rgba(20, 20, 40, .12);
+    }
+    html, body { width: 100%; height: 100%; font-family: Inter, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+    button, input, textarea { font: inherit; color: inherit; outline: none; }
+    button { cursor: pointer; border: 0; transition: .2s; }
+    .app { height: 100dvh; display: grid; grid-template-columns: 260px 1fr; background: var(--bg); }
+    .sidebar { border-right: 1px solid var(--border); background: var(--panel); padding: 24px 16px; display: flex; flex-direction: column; gap: 20px; }
+    .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 12px; }
+    .logo { width: 42px; height: 42px; border-radius: 14px; background: linear-gradient(135deg, var(--accent), #fd79a8); display: grid; place-items: center; font-size: 21px; box-shadow: 0 12px 30px rgba(117, 104, 255, .3); }
+    .brand h1 { font-size: 20px; }
+    .nav { display: flex; flex-direction: column; gap: 8px; }
+    .nav-btn { background: transparent; color: var(--muted); display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 14px; text-align: left; font-weight: 650; width: 100%; }
+    .nav-btn:hover, .nav-btn.active { background: var(--panel2); color: var(--text); }
+    .nav-btn.active { box-shadow: inset 3px 0 0 var(--accent); }
+    .nav-icon { width: 24px; text-align: center; font-size: 18px; }
+    .sidebar-foot { margin-top: auto; color: var(--muted); font-size: 12px; padding: 0 8px; }
+    .main { min-width: 0; display: flex; flex-direction: column; overflow: hidden; height: 100dvh; }
+    .topbar { height: 72px; flex: 0 0 72px; padding: 0 28px; border-bottom: 1px solid var(--border); background: var(--panel); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .topbar h2 { font-size: 22px; }
+    .primary-btn { padding: 11px 16px; background: linear-gradient(135deg, var(--accent), #9a7cff); color: #fff; border-radius: 13px; font-weight: 700; }
+    .primary-btn:hover { transform: translateY(-1px); }
+    .screen { display: none; width: 100%; height: calc(100vh - 72px); min-height: 0; overflow: hidden; }
+    .screen.active { display: grid; }
+    #screen-chats { grid-template-columns: minmax(300px, 380px) 1fr; }
+    .chat-list-pane { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+    .search { padding: 16px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; }
+    .search input { flex: 1; min-width: 0; border: 1px solid var(--border); background: var(--panel2); padding: 12px 14px; border-radius: 13px; }
+    .chat-list { overflow: auto; padding: 8px; }
+    .chat-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; cursor: pointer; }
+    .chat-item:hover, .chat-item.active { background: var(--panel2); }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--accent), #fd79a8); font-weight: 800; flex: 0 0 48px; }
+    .chat-info { min-width: 0; flex: 1; }
+    .chat-name { font-weight: 700; }
+    .chat-preview { margin-top: 4px; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-time { font-size: 11px; color: var(--muted); }
+    .conversation { display: flex; flex-direction: column; min-height: 0; background: var(--bg); height: 100%; }
+    .conversation-head { height: 68px; flex: 0 0 68px; border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; align-items: center; gap: 12px; background: var(--panel); }
+    .conversation-title { font-weight: 750; }
+    .conversation-status { font-size: 12px; color: var(--ok); margin-top: 2px; }
+    .messages { flex: 1; overflow: auto; padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+    /* ИСПРАВЛЕННЫЙ CSS: прямоугольник сообщения больше не растягивается во всю ширину */
+    .bubble { max-width: min(72%, 620px); width: fit-content; padding: 11px 14px; border-radius: 17px; background: var(--panel2); line-height: 1.45; word-break: break-word; }
+    .bubble.me { align-self: flex-end; background: var(--accent); color: #fff; }
+    .composer { padding: 14px 18px; border-top: 1px solid var(--border); display: flex; gap: 10px; background: var(--panel); }
+    .composer input { flex: 1; background: var(--panel2); border: 1px solid var(--border); padding: 12px 14px; border-radius: 14px; }
+    .empty { height: 100%; width: 100%; display: grid; place-items: center; padding: 32px; text-align: center; color: var(--muted); }
+    .empty-card { max-width: 420px; }
+    .empty-emoji { font-size: 54px; margin-bottom: 14px; }
+    .empty h3 { color: var(--text); font-size: 22px; margin-bottom: 8px; }
+    .empty p { line-height: 1.55; }
+    .content-screen { display: none; overflow-y: auto; width: 100%; padding: 32px; }
+    .content-screen.active { display: block; }
+    .content-wrap { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; width: 100%; }
+    .section-card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: var(--shadow); width: 100%; }
+    .profile-view { display: flex; gap: 32px; align-items: flex-start; width: 100%; }
+    .profile-avatar { width: 110px; height: 110px; border-radius: 28px; display: grid; place-items: center; background: linear-gradient(135deg, var(--accent), #fd79a8); font-size: 40px; font-weight: 800; color: #fff; flex: 0 0 110px; }
+    .profile-main { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+    .profile-main h3 { font-size: 28px; }
+    .profile-status { color: var(--ok); font-weight: 600; font-size: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; }
+    .field label { font-size: 13px; color: var(--muted); font-weight: 650; }
+    .field input, .field textarea { width: 100%; border: 1px solid var(--border); background: var(--panel2); padding: 12px 14px; border-radius: 12px; color: var(--text); }
+    .field textarea { min-height: 100px; resize: vertical; }
+    .settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; width: 100%; }
+    .setting { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .setting h4 { margin-bottom: 4px; }
+    .setting p { color: var(--muted); font-size: 13px; }
+    .switch { width: 50px; height: 28px; border-radius: 99px; background: var(--panel2); border: 1px solid var(--border); padding: 3px; cursor: pointer; }
+    .switch span { display: block; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: .2s; }
+    .switch.on { background: var(--accent); }
+    .switch.on span { transform: translateX(20px); }
+    .select-lang { background: var(--panel2); border: 1px solid var(--border); padding: 8px 12px; border-radius: 10px; font-weight: 600; }
+    .auth-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+    .auth-card { background: var(--panel); border: 1px solid var(--border); border-radius: 24px; padding: 32px; width: min(400px, 100%); box-shadow: var(--shadow); text-align: center; }
+    .auth-card h2 { font-size: 24px; margin-bottom: 8px; }
+    .auth-card p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+    .auth-btn { width: 100%; padding: 13px; background: linear-gradient(135deg, var(--accent), #9a7cff); color: #fff; font-weight: 700; border-radius: 13px; margin-top: 10px; }
+    .auth-toggle { text-align: center; margin-top: 16px; font-size: 13px; color: var(--muted); cursor: pointer; }
+    .auth-toggle span { color: var(--accent2); font-weight: 600; }
+    .pulse-id-box { background: var(--panel2); border: 1px dashed var(--ok); padding: 12px; border-radius: 12px; text-align: center; margin-top: 14px; color: var(--ok); font-weight: 700; display: none; }
+    @media(max-width:900px){
+      .app{grid-template-columns: 88px 1fr} .brand h1, .nav-label, .sidebar-foot{display:none} .sidebar{padding:18px 10px} .brand{justify-content:center} .nav-btn{justify-content:center;padding:13px}
+      .settings-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Окно Авторизации -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <h2 id="authTitle">Войти в аккаунт</h2>
+      <p id="authSubtitle">Введите ваши данные для входа в Pulse</p>
+      <form id="authForm">
+        <div class="field" style="margin-bottom: 14px;">
+          <label id="lblUser">Имя пользователя (username)</label>
+          <input type="text" id="usernameInput" placeholder="ilya" required>
+        </div>
+        <div class="field" style="margin-bottom: 14px;">
+          <label id="lblPass">Пароль</label>
+          <input type="password" id="passwordInput" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="auth-btn" id="submitBtn">Войти</button>
+      </form>
+      <div class="pulse-id-box" id="pulseIdBox"></div>
+      <div class="auth-toggle" id="authToggle">Ещё нет аккаунта? <span>Создать</span></div>
+    </div>
+  </div>
+
+  <div class="app">
+    <!-- Боковое меню -->
+    <div class="sidebar">
+      <div class="brand"><div class="logo">⚡</div><h1 class="nav-label">Pulse</h1></div>
+      <div class="nav">
+        <button class="nav-btn active" id="btnNavChats"><span class="nav-icon">💬</span><span class="nav-label" id="mChats">Чаты</span></button>
+        <button class="nav-btn" id="btnNavProfile"><span class="nav-icon">👤</span><span class="nav-label" id="mProfile">Профиль</span></button>
+        <button class="nav-btn" id="btnNavSettings"><span class="nav-icon">⚙️</span><span class="nav-label" id="mSettings">Настройки</span></button>
+      </div>
+      <div class="sidebar-foot">Pulse v1.0.0</div>
+    </div>
+    
+    <!-- Правая область -->
+    <div class="main">
+      <div class="topbar"><h2 id="screenTitle">Чаты</h2></div>
+
+      <!-- ЭКРАН ЧАТОВ -->
+      <div id="screen-chats" class="screen active chats-layout">
+        <div class="chat-list-pane">
+          <div class="search">
+            <input type="text" id="searchPartnerId" placeholder="Поиск по Pulse ID (PL-...)">
+            <button class="primary-btn" id="btnSearchPartner" style="padding: 10px;">🔍</button>
+          </div>
+          <div class="chat-list" id="chatListContainer"></div>
+        </div>
+        
+        <div class="conversation">
+          <div class="empty" id="chatEmptyState">
+            <div class="empty-card">
+              <div class="empty-emoji">💬</div>
+              <h3 id="empTitle">Выберите или найдите чат</h3>
+              <p id="empSub">Введите уникальный Pulse ID пользователя в поле поиска слева, чтобы начать переписку.</p>
+            </div>
+          </div>
+          
+          <div id="activeChatBox" style="display: none; flex-direction: column; flex: 1; height: 100%;">
+            <div class="conversation-head">
+              <div class="avatar" id="activeChatAvatar">?</div>
+              <div>
+                <div class="conversation-title" id="activeChatName">Собеседник</div>
+                <div class="conversation-status" id="activeChatStatus">в сети</div>
+              </div>
+            </div>
+            <div class="messages" id="messagesContainer"></div>
+            <div class="composer">
+              <input type="text" id="messageInput" placeholder="Напишите сообщение...">
+              <button class="primary-btn" id="btnSendMessage">Отправить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ЭКРАН ПРОФИЛЯ -->
+      <div id="screen-profile" class="screen content-screen">
+        <div class="content-wrap">
+          <div class="section-card profile-view">
+            <div class="profile-avatar" id="myProfileAvatar">?</div>
+            <div class="profile-main">
+              <h3 id="myProfileName">User</h3>
+              <div class="profile-status" id="myProfileStatus">в сети</div>
+              <p style="color: var(--accent2); font-weight: bold; font-size: 16px;" id="myProfileId">ID: PL-XXXX-XXXX</p>
+              
+              <div class="field">
+                <label id="lblBio">О себе / Описание профиля</label>
+                <textarea id="myBioInput" placeholder="Расскажите о себе..."></textarea>
+              </div>
+              <button class="primary-btn" id="btnSaveProfile" style="width: fit-content; margin-top: 8px;">Сохранить изменения</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ЭКРАН НАСТРОЕК -->
+      <div id="screen-settings" class="screen content-screen">
+        <div class="content-wrap">
+          <div class="settings-grid">
+            <div class="setting">
+              <div>
+                <h4 id="setLangTitle">Язык приложения</h4>
+                <p id="setLangSub">Выберите язык интерфейса</p>
+              </div>
+              <select class="select-lang" id="langSelect">
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <div class="setting">
+              <div>
+                <h4 id="setThemeTitle">Тема оформления</h4>
+                <p id="setThemeSub">Темный или светлый режим</p>
+              </div>
+              <div class="switch" id="themeSwitchBtn"><span></span></div>
+            </div>
+            <div class="setting" style="grid-column: span 2;">
+              <div>
+                <h4 id="setLogoutTitle">Выйти из аккаунта</h4>
+                <p id="setLogoutSub">Завершить текущую сессию</p>
+              </div>
+              <button class="primary-btn" id="btnLogout" style="background: linear-gradient(135deg, var(--danger), #ff7675); padding: 11px 24px;">Выйти</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <script>
+    const authOverlay = document.getElementById('authOverlay');
+    const authForm = document.getElementById('authForm');
+    const usernameInput = document.getElementById('usernameInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const pulseIdBox = document.getElementById('pulseIdBox');
+    const authTitle = document.getElementById('authTitle');
+    const authSubtitle = document.getElementById('authSubtitle');
+    const submitBtn = document.getElementById('submitBtn');
+    const authToggle = document.getElementById('authToggle');
+
+    let currentUser = null;
+    let authMode = 'login';
+    let currentLang = 'ru';
+    let activeChatPartner = null;
+    let socket = null;
+
+    const i18n = {
+      ru: {
+        chats: "Чаты", profile: "Профиль", settings: "Настройки",
+        login: "Войти в аккаунт", register: "Создать аккаунт", login_sub: "Введите ваши данные для входа в Pulse", register_sub: "Добро пожаловать в Pulse",
+        btn_login: "Войти", btn_reg: "Зарегистрироваться", toggle_reg: "Ещё нет аккаунта? <span>Создать</span>", toggle_login: "Уже есть аккаунт? <span>Войти</span>",
+        lbl_user: "Имя пользователя (username)", lbl_pass: "Пароль", lbl_bio: "О себе / Описание профиля", btn_save: "Сохранить изменения",
+        search_ph: "Поиск по Pulse ID (PL-...)", emp_title: "Выберите или найдите чат", emp_sub: "Введите уникальный Pulse ID пользователя в поле поиска слева, чтобы начать переписку.",
+        comp_ph: "Напишите сообщение...", btn_send: "Отправить", set_lang_title: "Язык приложения", set_lang_sub: "Выберите язык интерфейса",
+        set_theme_title: "Тема оформления", set_theme_sub: "Темный или светлый режим",
+        set_logo_title: "Выйти из аккаунта", set_logo_sub: "Завершить текущую сессию", btn_logo: "Выйти", online: "в сети", offline: "не в сети"
+      },
+      en: {
+        chats: "Chats", profile: "Profile", settings: "Settings",
+        login: "Sign In", register: "Create Account", login_sub: "Enter your credentials to access Pulse", register_sub: "Welcome to Pulse Messenger",
+        btn_login: "Login", btn_reg: "Register", toggle_reg: "Don't have an account? <span>Create</span>", toggle_login: "Already have an account? <span>Login</span>",
+        lbl_user: "Username", lbl_pass: "Password", lbl_bio: "About / Bio", btn_save: "Save Changes",
+        search_ph: "Search by Pulse ID (PL-...)", emp_title: "Select or find a chat", emp_sub: "Enter a unique Pulse ID in the search box on the left to start a conversation.",
+        comp_ph: "Type a message...", btn_send: "Send", set_lang_title: "App Language", set_lang_sub: "Choose interface language",
+        set_theme_title: "Theme Mode", set_theme_sub: "Toggle dark or light mode",
+        set_logo_title: "Logout", set_logo_sub: "End your active session", btn_logo: "Logout", online: "online", offline: "offline"
+      }
+    };
+
+    function switchScreen(screen) {
+      document.querySelectorAll('.screen').forEach(s => {
+        s.classList.remove('active');
+        s.style.display = 'none'; 
+      });
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      
+      const targetScreen = document.getElementById(`screen-${screen}`);
+      targetScreen.classList.add('active');
+      
+      if (screen === 'chats') {
+        targetScreen.style.display = 'grid';
+        document.getElementById('btnNavChats').classList.add('active');
+      } else {
+        targetScreen.style.display = 'block';
+        if (screen === 'profile') document.getElementById('btnNavProfile').classList.add('active');
+        if (screen === 'settings') document.getElementById('btnNavSettings').classList.add('active');
+      }
+      document.getElementById('screenTitle').innerText = i18n[currentLang][screen];
+    }
+
+    document.getElementById('btnNavChats').onclick = () => switchScreen('chats');
+    document.getElementById('btnNavProfile').onclick = () => switchScreen('profile');
+    document.getElementById('btnNavSettings').onclick = () => switchScreen('settings');
+
+    function changeLanguage() {
+      currentLang = document.getElementById('langSelect').value;
+      const t = i18n[currentLang];
+      document.getElementById('mChats').innerText = t.chats;
+      document.getElementById('mProfile').innerText = t.profile;
+      document.getElementById('mSettings').innerText = t.settings;
+      
+      const activeScreen = document.querySelector('.screen.active').id.split('-');
+      document.getElementById('screenTitle').innerText = t[activeScreen];
+      document.getElementById('searchPartnerId').placeholder = t.search_ph;
+      document.getElementById('empTitle').innerText = t.emp_title;
+      document.getElementById('empSub').innerText = t.emp_sub;
+      document.getElementById('messageInput').placeholder = t.comp_ph;
+      document.getElementById('btnSendMessage').innerText = t.btn_send;
+      document.getElementById('lblBio').innerText = t.lbl_bio;
+      document.getElementById('btnSaveProfile').innerText = t.btn_save;
+      document.getElementById('setLangTitle').innerText = t.set_lang_title;
+      document.getElementById('setLangSub').innerText = t.set_lang_sub;
+      document.getElementById('setThemeTitle').innerText = t.set_theme_title;
+      document.getElementById('setThemeSub').innerText = t.set_theme_sub;
+      document.getElementById('setLogoutTitle').innerText = t.set_logo_title;
+      document.getElementById('setLogoutSub').innerText = t.set_logo_sub;
+      document.getElementById('btnLogout').innerText = t.btn_logo;
+      
+      if(currentUser) document.getElementById('myProfileStatus').innerText = t.online;
+      if(activeChatPartner) document.getElementById('activeChatStatus').innerText = activeChatPartner.is_online ? t.online : t.offline;
+    }
+
+    document.getElementById('langSelect').onchange = changeLanguage;
+
+    document.getElementById('themeSwitchBtn').onclick = function() {
+      document.body.classList.toggle('light');
+      this.classList.toggle('on');
+    };
+
+    function connectWebSockets(pulse_id) {
+      // Проверяем, загрузилась ли библиотека сокетов вообще
+      if (typeof io === 'undefined') {
+        console.error("Критическая ошибка: Библиотека Socket.io не загрузилась с интернета! Проверьте тег <script> в <head>.");
+        alert("Внимание: Мессенджер запущен в режиме офлайн-сообщений (библиотека сокетов не загружена).");
+        return; // Мягко выходим из функции, не ломая авторизацию пользователя!
+      }
+
+      // Если библиотека на месте — подключаемся без проблем
+      socket = io("http://localhost:3000");
+      socket.on("connect", () => {
+        socket.emit("register_socket", pulse_id);
+      });
+      socket.on("receive_message", (data) => {
+        if (activeChatPartner && activeChatPartner.public_id === data.sender_id) {
+          const container = document.getElementById('messagesContainer');
+          if (container) {
+            container.innerHTML += `
+              <div class="bubble">
+                ${data.message_text}
+                <div class="bubble-time" style="font-size:10px; opacity:0.65; margin-top:5px; text-align:right;">${data.time}</div>
+              </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+          }
+        } else {
+          loadMyActiveChats();
+        }
+      });
+    }
+    async function loadMyActiveChats() {
+      const chatList = document.getElementById('chatListContainer');
+      if (!chatList || !currentUser) return;
+      try {
+        const response = await fetch(`http://localhost:3000/api/v1/messages/chats/${currentUser.pulse_id}`);
+        const chats = await response.json();
+        if (response.ok && chats.length > 0) {
+          chatList.innerHTML = '';
+          chats.forEach(partner => {
+            const chatItem = document.createElement('div');
+            chatItem.className = 'chat-item';
+            if (activeChatPartner && activeChatPartner.public_id === partner.public_id) chatItem.className += ' active';
+            chatItem.id = `chat-item-${partner.public_id}`;
+            chatItem.innerHTML = `
+              <div class="avatar">${partner.username.toUpperCase().substring(0,2)}</div>
+              <div class="chat-info">
+                <div class="chat-name">${partner.username}</div>
+                <div class="chat-preview">${partner.bio || ''}</div>
+              </div>
+              <div class="chat-time" style="color:${partner.is_online ? 'var(--ok)' : 'var(--muted)'}">
+                ${partner.is_online ? i18n[currentLang].online : i18n[currentLang].offline}
+              </div>
+            `;
+            chatItem.onclick = () => {
+              activeChatPartner = { public_id: partner.public_id, username: partner.username, bio: partner.bio, is_online: partner.is_online };
+              document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+              chatItem.classList.add('active');
+              openChat();
+            };
+            chatList.appendChild(chatItem);
+          });
+        }
+      } catch (error) { console.error('Ошибка загрузки чатов:', error); }
+    }
+
+    authToggle.addEventListener('click', () => {
+      pulseIdBox.style.display = 'none';
+      const t = i18n[currentLang];
+      if (authMode === 'login') {
+        authMode = 'register';
+        authTitle.innerText = t.register; authSubtitle.innerText = t.register_sub;
+        submitBtn.innerText = t.btn_reg; authToggle.innerHTML = t.toggle_login;
+      } else {
+        authMode = 'login';
+        authTitle.innerText = t.login; authSubtitle.innerText = t.login_sub;
+        submitBtn.innerText = t.btn_login; authToggle.innerHTML = t.toggle_reg;
+      }
+    });
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+      const url = authMode === 'login' ? 'http://localhost:3000/api/v1/auth/login' : 'http://localhost:3000/api/v1/auth/register';
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          currentUser = data;
+          document.getElementById('myProfileName').innerText = data.username;
+          document.getElementById('myProfileAvatar').innerText = data.username.toUpperCase().substring(0,2);
+          document.getElementById('myProfileId').innerText = `ID: ${data.pulse_id}`;
+          document.getElementById('myBioInput').value = data.bio || '';
+          document.getElementById('myProfileStatus').innerText = i18n[currentLang].online;
+          connectWebSockets(data.pulse_id);
+          loadMyActiveChats();
+          if (authMode === 'register') {
+            pulseIdBox.style.display = 'block'; pulseIdBox.innerText = `ID: ${data.pulse_id}`;
+            setTimeout(() => { authOverlay.style.display = 'none'; }, 4000);
+          } else {
+            authOverlay.style.display = 'none';
+          }
+        } else { alert(data.error); }
+      }catch (error) { 
+  console.error("Настоящая ошибка фронтенда:", error);
+  alert("Ошибка в коде: " + error.message); 
+}
+    });
+
+    async function saveProfile() {
+      const bioValue = document.getElementById('myBioInput').value;
+      try {
+        const response = await fetch('http://localhost:3000/api/v1/user/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pulse_id: currentUser.pulse_id, username: currentUser.username, bio: bioValue })
+        });
+        if (response.ok) {
+          currentUser.bio = bioValue;
+          alert(currentLang === 'ru' ? 'Сохранено в MySQL!' : 'Saved to MySQL!');
+        }
+      } catch (e) { alert('Ошибка соединения'); }
+    }
+    document.getElementById('btnSaveProfile').onclick = saveProfile;
+
+    async function logout() {
+      try {
+        await fetch('http://localhost:3000/api/v1/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pulse_id: currentUser.pulse_id })
+        });
+      } catch(e){}
+      currentUser = null; location.reload();
+    }
+    document.getElementById('btnLogout').onclick = logout;
+
+    async function searchUser() {
+      const partnerId = document.getElementById('searchPartnerId').value.trim();
+      if (!partnerId) return;
+      try {
+        const response = await fetch(`http://localhost:3000/api/v1/user/search/${partnerId}`);
+        const partner = await response.json();
+        if (response.ok) {
+          activeChatPartner = partner;
+          document.getElementById('chatListContainer').innerHTML = `
+            <div class="chat-item active" onclick="openChat()">
+              <div class="avatar">${partner.username.toUpperCase().substring(0,2)}</div>
+              <div class="chat-info">
+                <div class="chat-name">${partner.username}</div>
+                <div class="chat-preview">${partner.bio || ''}</div>
+              </div>
+              <div class="chat-time" style="color:${partner.is_online ? 'var(--ok)' : 'var(--muted)'}">
+                ${partner.is_online ? i18n[currentLang].online : i18n[currentLang].offline}
+              </div>
+            </div>
+          `;
+          openChat();
+        } else { alert(partner.error); }
+      } catch (err) { alert('Ошибка поиска'); }
+    }
+    document.getElementById('btnSearchPartner').onclick = searchUser;
+
+    async function openChat() {
+      document.getElementById('chatEmptyState').style.display = 'none';
+      document.getElementById('activeChatBox').style.display = 'flex';
+      document.getElementById('activeChatName').innerText = activeChatPartner.username;
+      document.getElementById('activeChatAvatar').innerText = activeChatPartner.username.toUpperCase().substring(0,2);
+      document.getElementById('activeChatStatus').innerText = activeChatPartner.is_online ? i18n[currentLang].online : i18n[currentLang].offline;
+      const container = document.getElementById('messagesContainer');
+      container.innerHTML = '';
+      try {
+        const response = await fetch(`http://localhost:3000/api/v1/messages/history/${currentUser.pulse_id}/${activeChatPartner.public_id}`);
+        const history = await response.json();
+        if (response.ok) {
+          history.forEach(msg => {
+            const isMe = msg.sender_id === currentUser.pulse_id;
+            container.innerHTML += `
+              <div class="bubble ${isMe ? 'me' : ''}">
+                ${msg.message_text}
+                <div class="bubble-time" style="font-size:10px; opacity:0.65; margin-top:5px; text-align:right;">${msg.time}</div>
+              </div>
+            `;
+          });
+          container.scrollTop = container.scrollHeight;
+        }
+      } catch (error) { console.error('Ошибка истории:', error); }
+    }
+
+    async function sendMessage() {
+      const msgInput = document.getElementById('messageInput');
+      const text = msgInput.value.trim();
+      if (!text || !activeChatPartner) return;
+      try {
+        const response = await fetch('http://localhost:3000/api/v1/messages/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender_id: currentUser.pulse_id,
+            receiver_id: activeChatPartner.public_id,
+            message_text: text
+          })
+        });
+        const resData = await response.json();
+        if (response.ok) {
+          const container = document.getElementById('messagesContainer');
+          container.innerHTML += `
+            <div class="bubble me">
+              ${text}
+              <div class="bubble-time" style="font-size:10px; opacity:0.65; margin-top:5px; text-align:right;">${resData.time}</div>
+            </div>
+          `;
+          msgInput.value = '';
+          container.scrollTop = container.scrollHeight;
+          loadMyActiveChats(); 
+        } else { alert('Не удалось отправить'); }
+      } catch (error) { alert('Ошибка сети'); }
+    }
+    document.getElementById('btnSendMessage').onclick = sendMessage;
+    document.getElementById('messageInput').onkeydown = (e) => { if(e.key === 'Enter') sendMessage(); };
+  </script>
+</body>
+</html>
