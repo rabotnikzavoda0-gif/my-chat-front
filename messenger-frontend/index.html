@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Vox Messenger</title>
+  <title>Voxed Messenger</title>
   <script src="https://pulse-messenger-6v3n.onrender.com/socket.io/socket.io.js"></script>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/index.css">
@@ -312,7 +312,7 @@ html,body{width:100%;height:100%;overflow:hidden}
   <div class="auth-overlay" id="authOverlay">
     <div class="auth-card">
       <h2 id="authTitle">Войти в аккаунт</h2>
-      <p id="authSubtitle">Введите ваши данные для входа в Vox</p>
+      <p id="authSubtitle">Введите ваши данные для входа в Voxed</p>
       <form id="authForm">
         <div class="field" style="margin-bottom: 14px;">
           <label id="lblUser">Имя пользователя (username)</label>
@@ -332,13 +332,13 @@ html,body{width:100%;height:100%;overflow:hidden}
   <div class="app">
     <!-- Боковое меню -->
     <div class="sidebar">
-      <div class="brand"><div class="logo">⚡</div><h1 class="nav-label">Vox</h1></div>
+      <div class="brand"><div class="logo">⚡</div><h1 class="nav-label">Voxed</h1></div>
       <div class="nav">
         <button class="nav-btn active" id="btnNavChats"><span class="nav-icon">💬</span><span class="nav-label" id="mChats">Чаты</span></button>
         <button class="nav-btn" id="btnNavProfile"><span class="nav-icon">👤</span><span class="nav-label" id="mProfile">Профиль</span></button>
         <button class="nav-btn" id="btnNavSettings"><span class="nav-icon">⚙️</span><span class="nav-label" id="mSettings">Настройки</span></button>
       </div>
-      <div class="sidebar-foot">Vox v1.0.0 BETA</div>
+      <div class="sidebar-foot">Voxed v1.0.0 BETA</div>
     </div>
     
     <!-- Правая область -->
@@ -349,7 +349,7 @@ html,body{width:100%;height:100%;overflow:hidden}
       <div id="screen-chats" class="screen active chats-layout">
         <div class="chat-list-pane">
           <div class="search">
-            <input type="text" id="searchPartnerId" placeholder="Поиск по Vox ID (PL-...)">
+            <input type="text" id="searchPartnerId" placeholder="Поиск по Voxed ID (PL-...)">
             <button class="primary-btn" id="btnSearchPartner" style="padding: 10px;">🔍</button>
           </div>
           <div class="chat-list" id="chatListContainer"></div>
@@ -360,7 +360,7 @@ html,body{width:100%;height:100%;overflow:hidden}
             <div class="empty-card">
               <div class="empty-emoji">💬</div>
               <h3 id="empTitle">Выберите или найдите чат</h3>
-              <p id="empSub">Введите уникальный Vox ID пользователя в поле поиска слева, чтобы начать переписку.</p>
+              <p id="empSub">Введите уникальный Voxed ID пользователя в поле поиска слева, чтобы начать переписку.</p>
             </div>
           </div>
           
@@ -455,20 +455,20 @@ html,body{width:100%;height:100%;overflow:hidden}
     const i18n = {
       ru: {
         chats: "Чаты", profile: "Профиль", settings: "Настройки",
-        login: "Войти в аккаунт", register: "Создать аккаунт", login_sub: "Введите ваши данные для входа в Vox", register_sub: "Добро пожаловать в Vox",
+        login: "Войти в аккаунт", register: "Создать аккаунт", login_sub: "Введите ваши данные для входа в Voxed", register_sub: "Добро пожаловать в Voxed",
         btn_login: "Войти", btn_reg: "Зарегистрироваться", toggle_reg: "Ещё нет аккаунта? <span>Создать</span>", toggle_login: "Уже есть аккаунт? <span>Войти</span>",
         lbl_user: "Имя пользователя (username)", lbl_pass: "Пароль", lbl_bio: "О себе / Описание профиля", btn_save: "Сохранить изменения",
-        search_ph: "Поиск по Vox ID (PL-...)", emp_title: "Выберите или найдите чат", emp_sub: "Введите уникальный Vox ID пользователя в поле поиска слева, чтобы начать переписку.",
+        search_ph: "Поиск по Voxed ID (PL-...)", emp_title: "Выберите или найдите чат", emp_sub: "Введите уникальный Voxed ID пользователя в поле поиска слева, чтобы начать переписку.",
         comp_ph: "Напишите сообщение...", btn_send: "Отправить", set_lang_title: "Язык приложения", set_lang_sub: "Выберите язык интерфейса",
         set_theme_title: "Тема оформления", set_theme_sub: "Темный или светлый режим",
         set_logo_title: "Выйти из аккаунта", set_logo_sub: "Завершить текущую сессию", btn_logo: "Выйти", online: "в сети", offline: "не в сети"
       },
       en: {
         chats: "Chats", profile: "Profile", settings: "Settings",
-        login: "Sign In", register: "Create Account", login_sub: "Enter your credentials to access Vox", register_sub: "Welcome to Vox Messenger",
+        login: "Sign In", register: "Create Account", login_sub: "Enter your credentials to access Voxed", register_sub: "Welcome to Voxed Messenger",
         btn_login: "Login", btn_reg: "Register", toggle_reg: "Don't have an account? <span>Create</span>", toggle_login: "Already have an account? <span>Login</span>",
         lbl_user: "Username", lbl_pass: "Password", lbl_bio: "About / Bio", btn_save: "Save Changes",
-        search_ph: "Search by Vox ID (PL-...)", emp_title: "Select or find a chat", emp_sub: "Enter a unique Vox ID in the search box on the left to start a conversation.",
+        search_ph: "Search by Voxed ID (PL-...)", emp_title: "Select or find a chat", emp_sub: "Enter a unique Voxed ID in the search box on the left to start a conversation.",
         comp_ph: "Type a message...", btn_send: "Send", set_lang_title: "App Language", set_lang_sub: "Choose interface language",
         set_theme_title: "Theme Mode", set_theme_sub: "Toggle dark or light mode",
         set_logo_title: "Logout", set_logo_sub: "End your active session", btn_logo: "Logout", online: "online", offline: "offline"
